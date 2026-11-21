@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "MindGames",
+    "slug": "mindgames",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0f3d2e",
+    "android": {
+      "package": "com.mindgames.app"
+    }
+  }
+}
