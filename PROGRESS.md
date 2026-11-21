@@ -1,26 +1,28 @@
 # PROGRESS — MindGames
 
 ## Đã làm
-- **Hiệu ứng đồng xu** (`src/ui/CoinFlip.js`, mới): dùng `Animated` có sẵn của React Native (không thêm thư viện), lật `rotateX` 6 vòng + bay lên/hạ xuống, dừng đúng mặt theo `g.turn`. `Table.js` hiện nó khi `g.log.length === 1` (đầu ván) và chưa bấm "Bắt đầu"; hoạt động cả hot-seat lẫn online (không cần sửa `viewFor`). **Chưa chạy trên điện thoại/Expo Go**, mới kiểm cú pháp JSX bằng @babel/parser. Cần nhìn thử: mặt Ngửa/Sấp có dừng đúng, mặt sau có bị lật ngược chữ (`backfaceVisibility` trên Android), sau Rematch có hiện lại đồng xu.
-- **Tung đồng xu quyết định ai đi trước vòng 1** (`src/core/game.js`: `this.first`, ghi log "Ngửa/Sấp → X đi trước"). Test lõi 29 nhóm đạt (có test đồng xu 400 lần). `tests/online.test.js` đã sửa bỏ giả định ghế 0 đi trước nhưng **chưa chạy lại** (chạy `npm run test:online` trên máy bạn). UI chưa có hiệu ứng đồng xu: kết quả chỉ hiện ở dòng log/banner (hot-seat: nếu Người 2 đi trước sẽ hiện màn chắn "Chuyển máy cho Người 2" kèm log đồng xu).
-- Đổi hướng: web+AI → **Expo mobile, người với người (hot-seat 1 máy)**. Bỏ AI; bản cũ cất ở `legacy-web/`.
-- Lõi (`src/core`) đạt test: `node tests/core.test.js` → 28 nhóm (bảng điểm có Joker, cộng đạn vượt 10, xác suất bóp cò, Ron được/Tsumo cấm, Stay/Hit, log không lộ lá rút, 100 ván giả lập 2 người: đủ 54 lá, luôn kết thúc).
-- UI Expo viết xong: `App.js` (menu + `viewer`), `src/ui/{Card,Chamber,Table}.js`, màn chắn đổi lượt.
-- **Online nhiều máy bằng mã phòng**: `Game.viewFor(p)`, `server/server.js`, `src/net/client.js`, `src/ui/Online.js`, `Table` có prop `online`. `npm run test:online` đạt (tạo/vào phòng, sai mã 404, phòng đầy 409, token sai 403, sai lượt 400, bài đối thủ bị ẩn, chơi hết ván, rematch). Test chạy trên môi trường Claude, chưa chạy trên máy user.
+- **Icon/splash + hiệu ứng bắn + âm thanh (code xong, CHƯA có file asset trên đĩa)**:
+  - `tools/make-assets.js` (Node thuần, `npm run assets`) sinh `assets/icon.png`, `adaptive-icon.png`, `splash-icon.png` (logo ổ đạn 10 ngăn, 1024²) và `assets/sounds/{coin,bang,click,card}.wav` (tổng hợp bằng toán). Đã chạy thử trong sandbox Claude: PNG đúng CRC/kích thước, WAV 22050 Hz mono hợp lệ. **Trên máy user chưa chạy** → thư mục `assets/` chưa tồn tại.
+  - `src/ui/ShotEffect.js`: overlay khi Hit (ổ đạn quay chậm dần → chớp sáng → chữ "ĐOÀNG!"/"CẠCH!", rung nếu chết). `Table.js` bật nó đúng 1 lần mỗi cú Hit nhờ khóa `round:victim:bullets` (`g.shot` còn nguyên sang vòng sau nên không dùng trực tiếp); khóa lúc vào bàn được ghi nhớ để không chiếu lại hiệu ứng cũ.
+  - `src/sound.js`: `play(name)` dùng `expo-audio`, bọc try/catch, `setMuted`. Gọi ở CoinFlip (coin), Table (card khi rút/bỏ), ShotEffect (bang/click).
+  - `app.json`: `icon`, `adaptiveIcon`, plugin `expo-splash-screen`; `package.json`: thêm `expo-audio`, `expo-splash-screen`, script `assets`.
+  - Chưa nhìn trên điện thoại.
+- **Thiết kế lại màn sảnh online** (`Online()` trong `src/ui/Online.js`, style `l`): header (← / ⚙ mở địa chỉ server), logo + tên game, ô tên, 2 thẻ "Tạo phòng mới" / "Vào phòng có sẵn" (nút vào phòng chỉ bật khi đủ 4 ký tự), khung lỗi đỏ, ScrollView + KeyboardAvoidingView. Màn chờ phòng (`Room`) chưa đổi. Chưa nhìn trên máy thật. Lưu ý: nút bánh răng tròn trong ảnh chụp cũ là menu dev của Expo Go, không phải của app.
+- **Màn hình chính dạng lưới game + bỏ chế độ chung 1 máy**: `src/games.js`, `src/ui/Home.js` (lưới 2 cột), `App.js` (chỉ điều hướng). Chưa nhìn trên điện thoại (cần xem: 2 cột, nhãn ONLINE không bị cắt, status bar đổi màu). Ảnh minh họa thẻ đang là emoji.
+- **Thêm game mới**: thêm 1 phần tử vào `GAMES` trong `src/games.js` (xem CONTEXT.md).
+- **Hiệu ứng đồng xu** (`src/ui/CoinFlip.js`): `Animated` có sẵn, lật `rotateX` 6 vòng, dừng đúng mặt theo `g.turn`. Chưa chạy trên điện thoại; cần nhìn: Ngửa/Sấp dừng đúng, mặt sau có bị ngược chữ (`backfaceVisibility` Android), sau Rematch có hiện lại.
+- **Tung đồng xu quyết định ai đi trước vòng 1** (`src/core/game.js`: `this.first`). Test lõi 29 nhóm đạt. `tests/online.test.js` đã sửa nhưng chưa chạy lại trên máy user.
+- Lõi (`src/core`) đạt `node tests/core.test.js`. Online nhiều máy bằng mã phòng: `Game.viewFor(p)`, `server/server.js`, `src/net/client.js`, `src/ui/Online.js`; `npm run test:online` đạt trên môi trường Claude.
 
 ## CHƯA kiểm chứng (quan trọng)
-- **UI online chưa chạy trên điện thoại thật**: chỉ server+luồng hành động được test bằng Node.
-- **Server trên Render chưa deploy** (user tự làm, xem bước dưới).
-- **Chưa cài Expo / chưa chạy app lần nào** (môi trường làm việc không chạy được `npm`/`npx`). UI mobile mới chỉ được viết, chưa nhìn thấy trên máy thật hay giả lập.
-- Phiên bản Expo: chưa ghim; cần `npx expo install --fix` sau `npm install`.
+- UI online + hiệu ứng bắn/âm thanh chưa chạy trên điện thoại thật. Nếu quên `npm run assets`, Metro báo lỗi "Unable to resolve ../assets/sounds/coin.wav" (require tĩnh) → app không build.
 
 ## Việc đầu tiên của phiên sau
-0. Thử online (cùng LAN, chỉ nhập mã): `npm install` rồi `npx expo install --fix` (ghim `expo-constants`). Terminal 1: `npm run server` (mở port 3000 trong Windows Firewall; server in IP LAN). Terminal 2: `npx expo start`. Cả 2 điện thoại quét QR, vào "Chơi online": app tự đoán server = IP của PC (`Constants.expoConfig.hostUri`) + cổng 3000, A tạo phòng, B nhập mã. Nếu đoán sai: mục "Nâng cao" để sửa địa chỉ (dùng IP server in ra).
-1. `cd D:\Vibe\MindGames` → `npm install` → `npx expo install --fix` → `npx expo start`, mở bằng Expo Go. Báo lỗi (nếu có) để sửa.
-2. Chơi thử 1 ván 2 người: kiểm màn chắn đổi lượt, Call/Pass, Hit/Stay, kết thúc ván.
+0. `cd D:\Vibe\MindGames` → `npm install` → `npx expo install --fix` (ghim expo-audio, expo-splash-screen, expo-constants) → **`npm run assets`** → `npx expo start -c`.
+1. Thử online (cùng LAN): Terminal 1 `npm run server` (mở port 3000 Windows Firewall), Terminal 2 `npx expo start`. 2 điện thoại quét QR, "Chơi online": app tự đoán server = IP PC + cổng 3000; sai thì sửa ở "Nâng cao".
+2. Chơi 1 ván 2 máy: đồng xu (+tiếng), rút/bỏ bài (+tiếng), Call/Pass, Hit (hiệu ứng ổ đạn + tiếng bang/click, chỉ chiếu 1 lần, cả 2 máy đều thấy), Stay, Rematch. Icon/splash chỉ thấy đúng ở bản build (Expo Go dùng icon của nó).
 
 ## Còn dở / bước tiếp theo
-- **Deploy Render + build APK (user tự làm)**: (1) đẩy repo lên GitHub; (2) Render > New Web Service > chọn repo: Runtime Node, **Build Command để trống hoặc `echo ok`** (server không cần npm install), **Start Command `node server/server.js`** (server tự đọc biến PORT); (3) kiểm tra mở `https://<tên>.onrender.com/state` phải trả JSON lỗi `Phòng không còn tồn tại`/`Token sai` (là server đang sống); (4) dán URL vào `src/net/config.js` (`SERVER_URL`); (5) `npm install` → `npx expo install --fix` → `npx eas-cli login` → `npx eas-cli build -p android --profile preview` → tải APK cài lên 2 máy. Host miễn phí ngủ sau ~15 phút không dùng (lần đầu mở chậm ~1 phút) — mở URL trước khi chơi để đánh thức. Server giữ phòng trong RAM: Render khởi động lại thì mất phòng.
-- Online còn thiếu: lưu phiên để vào lại phòng khi tắt app, báo khi đối thủ thoát, lưu địa chỉ server (cần AsyncStorage).
-- Chưa có icon/splash, âm thanh, hiệu ứng bắn
-- Làm rõ giả định trong CONTEXT.md (ai đi trước, có nhặt lá bỏ không).
+- Nút tắt/bật âm (đã có `setMuted` trong `src/sound.js`, chưa có UI).
+- Online còn thiếu: lưu phiên để vào lại phòng, báo khi đối thủ thoát, lưu địa chỉ server (AsyncStorage).
+- Làm rõ giả định trong CONTEXT.md (có nhặt lá bỏ không).

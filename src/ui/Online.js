@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, StatusBar, StyleSheet } from 'react-native';
 import Constants from 'expo-constants';
 import { Table } from './Table';
 import { createRoom, joinRoom, sendAction, fetchState } from '../net/client';
 import { SERVER_URL } from '../net/config';
 
 const POLL_MS = 1000;
+const TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 8 : 52;
 
 // Có SERVER_URL (bản APK, server Render) thì dùng luôn. Không thì (dev trong Expo Go):
 // đoán server chạy trên PC đang chạy Expo (cùng IP, cổng 3000).
@@ -79,8 +80,8 @@ function Room({ session, onExit }) {
   const game = remoteGame(snap.view, send);
   return (
     <View style={{ flex: 1 }}>
-      <Table game={game} viewer={seat} onViewer={() => {}} act={(fn) => { fn(); }}
-        onRestart={() => send({ type: 'rematch' })} onExit={onExit} online />
+      <Table game={game} viewer={seat} act={(fn) => { fn(); }}
+        onRestart={() => send({ type: 'rematch' })} onExit={onExit} />
       {error ? <Text style={s.errBar}>⚠ {error}</Text> : null}
     </View>
   );
@@ -102,21 +103,48 @@ export function Online({ onExit }) {
     try { setSession({ base, ...(await fn()) }); } catch (e) { setError(e.message); }
   };
 
+  const canJoin = code.length === 4;
+
   return (
-    <View style={s.center}>
-      <Text style={s.title}>Chơi online</Text>
-      <Text style={s.label}>Tên của bạn</Text>
-      <TextInput style={s.input} value={name} onChangeText={setName} placeholder="Tên hiển thị" placeholderTextColor="#6b8678" />
-      <Pressable style={s.btn} onPress={() => go(() => createRoom(base, name))}><Text style={s.btnText}>Tạo phòng</Text></Pressable>
-      <Text style={s.label}>hoặc nhập mã phòng bạn bè đưa</Text>
-      <TextInput style={[s.input, s.codeInput]} value={code} onChangeText={(t) => setCode(t.toUpperCase())}
-        autoCapitalize="characters" autoCorrect={false} maxLength={4} placeholder="ABCD" placeholderTextColor="#6b8678" />
-      <Pressable style={s.btn} onPress={() => go(() => joinRoom(base, code, name))}><Text style={s.btnText}>Vào phòng</Text></Pressable>
-      {error ? <Text style={s.err}>{error}</Text> : null}
-      <Pressable onPress={() => setAdv(!adv)}><Text style={s.ghostText}>{adv ? 'Ẩn nâng cao' : 'Nâng cao: địa chỉ server'}</Text></Pressable>
-      {adv ? <TextInput style={s.input} value={base} onChangeText={setBase} autoCapitalize="none" autoCorrect={false} /> : null}
-      <Pressable style={s.ghost} onPress={onExit}><Text style={s.ghostText}>← Menu</Text></Pressable>
-    </View>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={l.page} keyboardShouldPersistTaps="handled">
+        <View style={l.top}>
+          <Pressable onPress={onExit} hitSlop={12} style={l.iconBtn}><Text style={l.iconText}>←</Text></Pressable>
+          <Pressable onPress={() => setAdv(!adv)} hitSlop={12} style={[l.iconBtn, adv && l.iconOn]}><Text style={l.iconText}>⚙</Text></Pressable>
+        </View>
+
+        <Text style={l.hero}>🃏</Text>
+        <Text style={l.title}>10 Point Poker</Text>
+        <Text style={l.sub}>Chơi online cùng bạn bè</Text>
+
+        <Text style={l.label}>TÊN CỦA BẠN</Text>
+        <TextInput style={l.input} value={name} onChangeText={setName} placeholder="Tên hiển thị" placeholderTextColor="#6b8678" maxLength={16} />
+
+        <View style={l.card}>
+          <Text style={l.cardTitle}>Tạo phòng mới</Text>
+          <Text style={l.cardHint}>Bạn sẽ nhận mã 4 ký tự để gửi cho bạn bè.</Text>
+          <Pressable style={l.primary} onPress={() => go(() => createRoom(base, name))}><Text style={l.primaryText}>Tạo phòng</Text></Pressable>
+        </View>
+
+        <View style={l.card}>
+          <Text style={l.cardTitle}>Vào phòng có sẵn</Text>
+          <TextInput style={l.codeInput} value={code} onChangeText={(t) => setCode(t.toUpperCase())}
+            autoCapitalize="characters" autoCorrect={false} maxLength={4} placeholder="ABCD" placeholderTextColor="#4f6b5d" />
+          <Pressable disabled={!canJoin} style={[l.secondary, !canJoin && l.disabled]} onPress={() => go(() => joinRoom(base, code, name))}>
+            <Text style={l.secondaryText}>Vào phòng</Text>
+          </Pressable>
+        </View>
+
+        {error ? <View style={l.errBox}><Text style={l.errText}>{error}</Text></View> : null}
+
+        {adv ? (
+          <View style={l.card}>
+            <Text style={l.cardTitle}>Địa chỉ server</Text>
+            <TextInput style={l.input} value={base} onChangeText={setBase} autoCapitalize="none" autoCorrect={false} />
+          </View>
+        ) : null}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -134,4 +162,29 @@ const s = StyleSheet.create({
   ghostText: { color: '#9db5a8' },
   err: { color: '#ff8a80', textAlign: 'center' },
   errBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#d9534f', color: '#fff', textAlign: 'center', padding: 6 },
+});
+
+// Style riêng cho màn sảnh (nhập tên / tạo phòng / vào phòng).
+const l = StyleSheet.create({
+  page: { flexGrow: 1, paddingTop: TOP, paddingHorizontal: 20, paddingBottom: 32, gap: 12 },
+  top: { flexDirection: 'row', justifyContent: 'space-between' },
+  iconBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#ffffff18', alignItems: 'center', justifyContent: 'center' },
+  iconOn: { backgroundColor: '#e0b84c40' },
+  iconText: { color: '#e9efe9', fontSize: 20 },
+  hero: { fontSize: 60, textAlign: 'center', marginTop: 4 },
+  title: { color: '#e0b84c', fontSize: 28, fontWeight: '900', textAlign: 'center', letterSpacing: 0.5 },
+  sub: { color: '#9db5a8', textAlign: 'center', marginBottom: 8 },
+  label: { color: '#9db5a8', fontSize: 12, fontWeight: '700', letterSpacing: 1.5, marginTop: 4 },
+  input: { backgroundColor: '#00000059', color: '#e9efe9', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, borderWidth: 1, borderColor: '#ffffff25' },
+  card: { backgroundColor: '#ffffff12', borderRadius: 20, padding: 16, gap: 10, borderWidth: 1, borderColor: '#ffffff20' },
+  cardTitle: { color: '#e9efe9', fontSize: 17, fontWeight: '800' },
+  cardHint: { color: '#9db5a8', fontSize: 13 },
+  primary: { backgroundColor: '#e0b84c', borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
+  primaryText: { color: '#222', fontWeight: '800', fontSize: 16 },
+  secondary: { borderRadius: 14, paddingVertical: 12, alignItems: 'center', borderWidth: 2, borderColor: '#e0b84c' },
+  secondaryText: { color: '#e0b84c', fontWeight: '800', fontSize: 16 },
+  disabled: { opacity: 0.4 },
+  codeInput: { backgroundColor: '#00000059', color: '#e0b84c', borderRadius: 14, paddingVertical: 12, fontSize: 30, fontWeight: '800', letterSpacing: 12, textAlign: 'center', borderWidth: 1, borderColor: '#ffffff25' },
+  errBox: { backgroundColor: '#d9534f30', borderRadius: 12, borderWidth: 1, borderColor: '#d9534f', padding: 12 },
+  errText: { color: '#ffb4ab', textAlign: 'center' },
 });

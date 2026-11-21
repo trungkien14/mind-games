@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, Animated, Easing, StyleSheet } from 'react-native';
+import { play } from '../sound';
 
 const FLIPS = 6;         // số vòng lật trước khi dừng
 const DURATION = 2200;   // ms
@@ -21,6 +22,7 @@ export function CoinFlip({ names, first, onDone }) {
         Animated.timing(rise, { toValue: 0, duration: DURATION * 0.55, easing: Easing.in(Easing.quad), useNativeDriver: true }),
       ]),
     ]);
+    play('coin');
     anim.start(({ finished }) => { if (finished) setLanded(true); });
     return () => anim.stop();
   }, []);

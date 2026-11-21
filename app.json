@@ -6,8 +6,13 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0f3d2e",
+    "icon": "./assets/icon.png",
+    "plugins": [
+      ["expo-splash-screen", { "backgroundColor": "#0f3d2e", "image": "./assets/splash-icon.png", "imageWidth": 220 }]
+    ],
     "android": {
-      "package": "com.mindgames.app"
+      "package": "com.mindgames.app",
+      "adaptiveIcon": { "foregroundImage": "./assets/adaptive-icon.png", "backgroundColor": "#0f3d2e" }
     }
   }
 }

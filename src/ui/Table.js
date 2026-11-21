@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Alert, Platform, StatusBar, StyleSheet } from 'react-native';
 import { Card } from './Card';
 import { Chamber } from './Chamber';
 import { CoinFlip } from './CoinFlip';
+import { ShotEffect } from './ShotEffect';
+import { play } from '../sound';
 
 const TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 8 : 52;
 
@@ -14,19 +16,7 @@ function Btn({ text, onPress, kind }) {
   );
 }
 
-// Màn chắn khi đổi lượt: che bài, chỉ hiện sau khi người kế tiếp bấm "sẵn sàng".
-function Handoff({ game, onReady }) {
-  return (
-    <View style={s.cover}>
-      <Text style={s.coverTitle}>Chuyển máy cho</Text>
-      <Text style={s.coverName}>{game.names[game.turn]}</Text>
-      <Text style={s.coverLog}>{game.log[game.log.length - 1]}</Text>
-      <Btn text={`Tôi là ${game.names[game.turn]} — sẵn sàng`} onPress={onReady} />
-    </View>
-  );
-}
-
-export function Table({ game: g, viewer, onViewer, act, onRestart, onExit, online }) {
+export function Table({ game: g, viewer, act, onRestart, onExit }) {
   const me = viewer, opp = 1 - viewer;
   const over = g.phase === 'over';
 
@@ -34,12 +24,22 @@ export function Table({ game: g, viewer, onViewer, act, onRestart, onExit, onlin
   // Hook phải đứng trước mọi `return` sớm bên dưới.
   const [coinDone, setCoinDone] = useState(false);
   useEffect(() => { if (g.log.length > 1 && coinDone) setCoinDone(false); }, [g.log.length]); // chuẩn bị cho ván mới
+
+  // Hiệu ứng bắn: chạy MỘT lần cho mỗi cú Hit mới. g.shot còn nguyên sang các lượt sau nên phải dùng khóa nhận diện
+  // (vòng + nạn nhân + số đạn). Khóa lúc vào bàn được ghi nhớ sẵn để vào giữa ván không chiếu lại hiệu ứng cũ.
+  const shotKey = g.shot && g.shot.action === 'hit' ? `${g.round}:${g.shot.victim}:${g.shot.bullets}` : null;
+  const seenShot = useRef(shotKey);
+  const [fx, setFx] = useState(null);
+  useEffect(() => {
+    if (!shotKey) { seenShot.current = null; return; }   // ván mới: xóa khóa cũ
+    if (shotKey !== seenShot.current) {
+      seenShot.current = shotKey;
+      setFx({ dead: g.shot.dead, victim: g.shot.victim, bullets: g.shot.bullets });
+    }
+  }, [shotKey]);
   if (g.log.length === 1 && !coinDone) {
     return <CoinFlip names={g.names} first={g.turn} onDone={() => setCoinDone(true)} />;
   }
-
-  // Hot-seat: che bài khi đổi lượt. Online: mỗi người một máy nên không cần màn chắn.
-  if (!online && !over && g.turn !== viewer) return <Handoff game={g} onReady={() => onViewer(g.turn)} />;
 
   const myTurn = g.turn === me;
   const canDiscard = !over && myTurn && g.phase === 'discard';
@@ -75,6 +75,7 @@ export function Table({ game: g, viewer, onViewer, act, onRestart, onExit, onlin
 
   const r = g.result;
   return (
+    <View style={{ flex: 1 }}>
     <ScrollView contentContainerStyle={s.page}>
       <View style={s.header}>
         <Pressable onPress={onExit}><Text style={s.link}>← Menu</Text></Pressable>
@@ -90,7 +91,7 @@ export function Table({ game: g, viewer, onViewer, act, onRestart, onExit, onlin
 
       <View style={s.mid}>
         <View style={s.row}>
-          <Card back count={g.deckCount} highlight={canDraw} onPress={canDraw ? () => act(() => g.draw(me)) : undefined} />
+          <Card back count={g.deckCount} highlight={canDraw} onPress={canDraw ? () => { play('card'); act(() => g.draw(me)); } : undefined} />
           {g.lastDiscard ? <Card card={g.lastDiscard} /> : <View style={s.empty} />}
         </View>
         <Text style={s.banner}>{g.log[g.log.length - 1]}</Text>
@@ -118,12 +119,14 @@ export function Table({ game: g, viewer, onViewer, act, onRestart, onExit, onlin
 
       <View style={s.row}>
         {g.hands[me].map((c) => (
-          <Card key={c.id} card={c} highlight={canDiscard} onPress={canDiscard ? () => act(() => g.discard(me, c.id)) : undefined} />
+          <Card key={c.id} card={c} highlight={canDiscard} onPress={canDiscard ? () => { play('card'); act(() => g.discard(me, c.id)); } : undefined} />
         ))}
       </View>
       <Chamber bullets={g.bullets[me]} />
       <Text style={s.name}>{g.names[me]} (bạn)</Text>
     </ScrollView>
+    {fx ? <ShotEffect dead={fx.dead} name={g.names[fx.victim]} bullets={fx.bullets} onDone={() => setFx(null)} /> : null}
+    </View>
   );
 }
 
@@ -145,8 +148,4 @@ const s = StyleSheet.create({
   btnText: { color: '#222', fontWeight: '700' },
   danger: { backgroundColor: '#d9534f' },
   ghost: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#ffffff30' },
-  cover: { flex: 1, backgroundColor: '#0b2e23', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 14 },
-  coverTitle: { color: '#9db5a8', fontSize: 16 },
-  coverName: { color: '#e0b84c', fontSize: 36, fontWeight: '800' },
-  coverLog: { color: '#9db5a8', textAlign: 'center', marginBottom: 12 },
 });

@@ -9,12 +9,15 @@
     "ios": "expo start --ios",
     "test": "node tests/core.test.js",
     "server": "node server/server.js",
-    "test:online": "node tests/online.test.js"
+    "test:online": "node tests/online.test.js",
+    "assets": "node tools/make-assets.js"
   },
   "dependencies": {
     "expo": "latest",
+    "expo-audio": "*",
     "expo-constants": "*",
-    "react": "*",
+    "expo-splash-screen": "*",
+    "react": "19.3.0",
     "react-native": "*"
   }
 }
