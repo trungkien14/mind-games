@@ -8,11 +8,33 @@
     "backgroundColor": "#0f3d2e",
     "icon": "./assets/icon.png",
     "plugins": [
-      ["expo-splash-screen", { "backgroundColor": "#0f3d2e", "image": "./assets/splash-icon.png", "imageWidth": 220 }]
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0f3d2e",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 220
+        }
+      ],
+      "expo-audio"
     ],
     "android": {
       "package": "com.mindgames.app",
-      "adaptiveIcon": { "foregroundImage": "./assets/adaptive-icon.png", "backgroundColor": "#0f3d2e" }
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0f3d2e"
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ]
+    },
+    "extra": {
+      "eas": {
+        "projectId": "fe5c4f56-daa1-414b-afc0-56cb05adc3c5"
+      }
     }
   }
 }

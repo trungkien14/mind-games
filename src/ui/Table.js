@@ -4,6 +4,7 @@ import { Card } from './Card';
 import { Chamber } from './Chamber';
 import { CoinFlip } from './CoinFlip';
 import { ShotEffect } from './ShotEffect';
+import { HintPanel } from './HintPanel';
 import { play } from '../sound';
 
 const TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 8 : 52;
@@ -30,6 +31,7 @@ export function Table({ game: g, viewer, act, onRestart, onExit }) {
   const shotKey = g.shot && g.shot.action === 'hit' ? `${g.round}:${g.shot.victim}:${g.shot.bullets}` : null;
   const seenShot = useRef(shotKey);
   const [fx, setFx] = useState(null);
+  const [showHint, setShowHint] = useState(false);   // bảng Gợi ý cho người mới (bật/tắt bằng nút 💡)
   useEffect(() => {
     if (!shotKey) { seenShot.current = null; return; }   // ván mới: xóa khóa cũ
     if (shotKey !== seenShot.current) {
@@ -117,6 +119,12 @@ export function Table({ game: g, viewer, act, onRestart, onExit }) {
         <View style={s.actions}>{actions}</View>
       </View>
 
+      {!over && (
+        <Pressable onPress={() => setShowHint((v) => !v)} style={s.hintBtn}>
+          <Text style={s.hintBtnText}>{showHint ? '💡 Ẩn gợi ý' : '💡 Gợi ý: bài tôi có thể thành gì?'}</Text>
+        </Pressable>
+      )}
+      {showHint && !over ? <HintPanel hand={g.hands[me]} seenCards={g.lastDiscard ? [g.lastDiscard] : []} /> : null}
       <View style={s.row}>
         {g.hands[me].map((c) => (
           <Card key={c.id} card={c} highlight={canDiscard} onPress={canDiscard ? () => { play('card'); act(() => g.discard(me, c.id)); } : undefined} />
@@ -144,6 +152,8 @@ const s = StyleSheet.create({
   panel: { backgroundColor: '#00000059', borderRadius: 12, borderWidth: 1, borderColor: '#ffffff25', padding: 10, gap: 8, alignItems: 'center', alignSelf: 'stretch' },
   panelTitle: { color: '#e9efe9', fontWeight: '700', textAlign: 'center' },
   actions: { minHeight: 44, justifyContent: 'center' },
+  hintBtn: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: '#e0b84c80' },
+  hintBtnText: { color: '#e0b84c', fontWeight: '600', fontSize: 13 },
   btn: { backgroundColor: '#e0b84c', paddingVertical: 12, paddingHorizontal: 18, borderRadius: 10 },
   btnText: { color: '#222', fontWeight: '700' },
   danger: { backgroundColor: '#d9534f' },

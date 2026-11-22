@@ -37,8 +37,7 @@ Người thua nạp đạn = điểm. Ổ 10 ngăn, `P(chết) = đạn/10`. Vư
 Người thắng chọn **Hit** (thua bóp cò; sống → đạn về 0; chết → hết ván) hoặc **Stay** (giữ đạn). Vòng sau: người thắng bỏ bài cũ, nhận 4 lá mới; người thua giữ nguyên 4 lá.
 Luồng pha: `draw → discard → (call | draw của đối thủ) → choose → vòng mới | over`.
 
-## Giả định (đề không nói rõ — đổi nếu sai)
+## Giả định / luật đã xác nhận
 - Người đi trước vòng 1 do **tung đồng xu** (`Game.first`, `opts.first` để ép khi test); sau mỗi Call, **người thắng đi trước** vòng sau.
-- Chỉ rút từ bộ bài (không nhặt lá vừa bỏ, ngoài việc Call). Hết bài thì xáo lại chồng bài đã bỏ.
+- **Đã xác nhận với chủ dự án**: lá vừa bỏ CHỈ dùng để Call, không được nhặt về tay; chỉ rút từ bộ bài. Hết bài thì xáo lại chồng bài đã bỏ.
 - Call là tùy chọn (có nút "Bỏ qua").
-- "Chiến thuật riêng / mánh dùng bài" ở lượt mình: **chưa cài** (đề chưa mô tả cụ thể).

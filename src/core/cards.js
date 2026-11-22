@@ -14,6 +14,19 @@
     4: 'Straight', 5: 'Flush', 6: 'Full House', 7: 'Four of a Kind',
     8: 'Straight Flush', 9: 'Royal Straight Flush', 10: 'Five of a Kind',
   };
+  // Giải thích luật bằng tiếng Việt cho người mới (dùng ở nút Gợi ý).
+  const HAND_HELP = {
+    1: 'Một đôi: 2 lá cùng số (vd 7-7)',
+    2: 'Hai đôi: 2 cặp, mỗi cặp 2 lá cùng số (vd 7-7 và K-K)',
+    3: 'Sám: 3 lá cùng số',
+    4: 'Sảnh: 5 lá số liên tiếp (vd 4-5-6-7-8); A tính thấp hoặc cao',
+    5: 'Thùng: 5 lá cùng chất (♠ ♥ ♦ ♣)',
+    6: 'Cù lũ: 1 bộ ba + 1 đôi (vd 8-8-8-K-K)',
+    7: 'Tứ quý: 4 lá cùng số',
+    8: 'Thùng phá sảnh: sảnh mà cả 5 lá cùng chất',
+    9: 'Sảnh rồng: 10-J-Q-K-A cùng chất',
+    10: 'Ngũ quý: 5 lá cùng số (cần Joker)',
+  };
 
   // id: 0..51 = lá thường (suitIndex*13 + rank-1), 52/53 = Joker
   function makeDeck() {
@@ -92,5 +105,43 @@
     return { score, name: HAND_NAMES[score] };
   }
 
-  return { SUITS, SUIT_SYMBOL, RANK_LABEL, HAND_NAMES, makeDeck, shuffle, cardLabel, parseCard, evalHand };
+  /* MỤC ĐÍCH: biến danh sách lá cần thiết thành câu ngắn dễ đọc cho người mới (vd "mọi lá ♠", "số 7", "5♥, 9♠").
+   * CÁCH HOẠT ĐỘNG: thử lần lượt 3 kiểu mô tả từ gọn đến chi tiết: cùng một chất (>= 5 lá) -> "mọi lá <chất>";
+   * nhiều lá trùng số -> liệt kê SỐ; còn ít lá -> liệt kê từng lá. Quá nhiều lá mà không gọn được thì trả null (chỉ hiện số lượng).
+   * Joker luôn được thêm riêng ở cuối. Là mô tả gần đúng, không thay cho danh sách chính xác. */
+  function describeNeededCards(cards) {
+    const jokerCount = cards.filter((c) => c.joker).length;
+    const normalCards = cards.filter((c) => !c.joker);
+    const suitList = Array.from(new Set(normalCards.map((c) => c.suit)));
+    const rankList = Array.from(new Set(normalCards.map((c) => c.rank))).sort((a, b) => a - b);
+    let text = null;
+    if (suitList.length === 1 && normalCards.length >= 5) text = 'mọi lá ' + SUIT_SYMBOL[suitList[0]];
+    else if (rankList.length <= 6 && rankList.length < normalCards.length) text = 'số ' + rankList.map((r) => RANK_LABEL[r] || r).join(', ');
+    else if (normalCards.length <= 6) text = normalCards.map(cardLabel).join(', ');
+    if (jokerCount > 0) text = (text ? text + ' + ' : '') + 'Joker';
+    return text;
+  }
+
+  /* MỤC ĐÍCH: gợi ý cho người mới. Với 4 lá trên tay, thêm 1 lá nào nữa (bốc từ bộ bài hoặc Call lá đối thủ bỏ)
+   * thì được tổ hợp gì, cần bao nhiêu lá.
+   * CÁCH HOẠT ĐỘNG: duyệt mọi lá còn chưa thấy (54 lá trừ 4 lá trên tay và các lá lộ ra trong seenCards),
+   * ghép với 4 lá rồi chấm bằng evalHand (tái dùng luật + Joker vạn năng), gom theo điểm.
+   * Trả về mảng {score, name, help, count, needs} xếp điểm cao -> thấp, bỏ qua các lá không tạo ra tổ hợp nào (0 điểm). */
+  function listOutsForHand(hand, seenCards) {
+    if (hand.length !== 4) throw new Error('Gợi ý chỉ dùng cho 4 lá trên tay');
+    const unavailableIds = new Set(hand.concat(seenCards || []).map((c) => c.id));
+    const cardsByScore = {};
+    for (const candidate of makeDeck()) {
+      if (unavailableIds.has(candidate.id)) continue;
+      const score = evalHand(hand.concat(candidate)).score;
+      if (score < 1) continue;
+      (cardsByScore[score] = cardsByScore[score] || []).push(candidate);
+    }
+    return Object.keys(cardsByScore).map(Number).sort((a, b) => b - a).map((score) => ({
+      score, name: HAND_NAMES[score], help: HAND_HELP[score],
+      count: cardsByScore[score].length, needs: describeNeededCards(cardsByScore[score]),
+    }));
+  }
+
+  return { SUITS, SUIT_SYMBOL, RANK_LABEL, HAND_NAMES, HAND_HELP, makeDeck, shuffle, cardLabel, parseCard, evalHand, listOutsForHand };
 });
