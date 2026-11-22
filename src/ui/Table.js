@@ -39,6 +39,25 @@ export function Table({ game: g, viewer, act, onRestart, onExit }) {
       setFx({ dead: g.shot.dead, victim: g.shot.victim, bullets: g.shot.bullets });
     }
   }, [shotKey]);
+
+  /* MỤC ĐÍCH: tự rút 1 lá khi đến lượt mình (pha 'draw'), người chơi khỏi phải chạm bộ bài.
+   * CÁCH HOẠT ĐỘNG: đợi 500ms cho người chơi kịp thấy đã đến lượt rồi gọi g.draw. autoDrawKey (vòng + độ dài log) ghi nhớ
+   * "lượt rút này đã gửi rồi" để render lại trong lúc request đang bay không rút 2 lần; khóa chỉ được ghi KHI timer chạy, nên timer
+   * bị hủy giữa chừng (cleanup) thì lần sau vẫn rút được. Không rút khi đang chiếu đồng xu. Nếu gửi lỗi thì vẫn còn cách
+   * chạm bộ bài để rút tay. Hook phải đứng trước return sớm bên dưới. */
+  const autoDrawKey = useRef(null);
+  const shouldAutoDraw = !over && g.turn === me && g.phase === 'draw' && !(g.log.length === 1 && !coinDone);
+  useEffect(() => {
+    if (!shouldAutoDraw) return;
+    const key = `${g.round}:${g.log.length}`;
+    if (autoDrawKey.current === key) return;
+    const timer = setTimeout(() => {
+      autoDrawKey.current = key;
+      play('card');
+      act(() => g.draw(me));
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [shouldAutoDraw, g.round, g.log.length]);
   if (g.log.length === 1 && !coinDone) {
     return <CoinFlip names={g.names} first={g.turn} onDone={() => setCoinDone(true)} />;
   }
@@ -53,22 +72,27 @@ export function Table({ game: g, viewer, act, onRestart, onExit }) {
   ]);
 
   let actions = null;
-  if (over) actions = <Btn text="Ván mới" onPress={onRestart} />;
-  else if (!myTurn) actions = <Text style={s.hint}>Đang chờ {g.names[g.turn]}…</Text>;
-  else if (g.phase === 'draw') actions = <Text style={s.hint}>Chạm bộ bài để rút 1 lá.</Text>;
+  // Hết ván: mỗi người bấm "Tiếp tục"; phải cả hai bấm server mới tạo ván mới (g.rematch[i] do server gửi).
+  if (over) actions = g.rematch && g.rematch[me]
+    ? <Text style={s.hint}>Đang chờ {g.names[opp]} bấm Tiếp tục…</Text>
+    : <Btn text="Tiếp tục" onPress={onRestart} />;
+  else if (!myTurn) actions = <Text style={s.hint}>{g.phase === 'review' ? `Đang chờ ${g.names[g.turn]} xem bài…` : `Đang chờ ${g.names[g.turn]}…`}</Text>;
+  else if (g.phase === 'draw') actions = <Text style={s.hint}>Đang rút bài… (nếu không tự rút, chạm bộ bài)</Text>;
   else if (g.phase === 'discard') actions = <Text style={s.hint}>Chạm 1 lá trên tay để bỏ.</Text>;
   else if (g.phase === 'call') {
-    const r = g.previewCall(me);
     actions = (
-      <View style={s.row}>
-        <Btn text={`Call! ${r.name} (${r.score})`} onPress={() => act(() => g.call(me))} />
+      <View style={s.actRow}>
+        <Btn text="Call!" onPress={() => act(() => g.call(me))} />
         <Btn text="Bỏ qua" kind="ghost" onPress={() => act(() => g.pass(me))} />
       </View>
     );
+  } else if (g.phase === 'review') {
+    // Người thua (đang có lượt) xem bài Call ở panel bên trên rồi bấm Tiếp tục
+    actions = <Btn text="Tiếp tục" onPress={() => act(() => g.ack(me))} />;
   } else if (g.phase === 'choose') {
     const n = g.bullets[g.result.loser];
     actions = (
-      <View style={s.row}>
+      <View style={s.actRow}>
         <Btn text={`Hit (${n * 10}% chết)`} kind="danger" onPress={() => act(() => g.choose(me, 'hit'))} />
         <Btn text="Stay" onPress={() => act(() => g.choose(me, 'stay'))} />
       </View>
@@ -80,9 +104,18 @@ export function Table({ game: g, viewer, act, onRestart, onExit }) {
     <View style={{ flex: 1 }}>
     <ScrollView contentContainerStyle={s.page}>
       <View style={s.header}>
-        <Pressable onPress={onExit}><Text style={s.link}>← Menu</Text></Pressable>
+        <View style={s.side}><Pressable onPress={onExit}><Text style={s.link}>← Menu</Text></Pressable></View>
         <Text style={s.round}>Vòng {g.round}</Text>
-        {!over ? <Pressable onPress={forfeit}><Text style={s.link}>Bỏ cuộc</Text></Pressable> : <View style={{ width: 60 }} />}
+        <View style={[s.side, s.sideRight]}>
+          {!over ? (
+            <>
+              <Pressable onPress={() => setShowHint((v) => !v)} hitSlop={10} style={[s.hintIcon, showHint && s.hintIconOn]}>
+                <Text style={s.hintIconText}>💡</Text>
+              </Pressable>
+              <Pressable onPress={forfeit}><Text style={s.link}>Bỏ cuộc</Text></Pressable>
+            </>
+          ) : null}
+        </View>
       </View>
 
       <Text style={s.name}>{g.names[opp]}</Text>
@@ -98,7 +131,7 @@ export function Table({ game: g, viewer, act, onRestart, onExit }) {
         </View>
         <Text style={s.banner}>{g.log[g.log.length - 1]}</Text>
 
-        {g.phase === 'choose' && (
+        {(g.phase === 'review' || g.phase === 'choose') && (
           <View style={s.panel}>
             <Text style={s.panelTitle}>{g.names[r.winner]} thắng: {r.name} ({r.score} điểm)</Text>
             <View style={s.row}>
@@ -119,11 +152,6 @@ export function Table({ game: g, viewer, act, onRestart, onExit }) {
         <View style={s.actions}>{actions}</View>
       </View>
 
-      {!over && (
-        <Pressable onPress={() => setShowHint((v) => !v)} style={s.hintBtn}>
-          <Text style={s.hintBtnText}>{showHint ? '💡 Ẩn gợi ý' : '💡 Gợi ý: bài tôi có thể thành gì?'}</Text>
-        </Pressable>
-      )}
       {showHint && !over ? <HintPanel hand={g.hands[me]} seenCards={g.lastDiscard ? [g.lastDiscard] : []} /> : null}
       <View style={s.row}>
         {g.hands[me].map((c) => (
@@ -141,7 +169,12 @@ export function Table({ game: g, viewer, act, onRestart, onExit }) {
 const s = StyleSheet.create({
   page: { flexGrow: 1, paddingTop: TOP, paddingBottom: 24, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', alignSelf: 'stretch' },
-  link: { color: '#9db5a8', width: 60 },
+  link: { color: '#9db5a8' },
+  side: { flex: 1, flexDirection: 'row', alignItems: 'center' },   // 2 bên header bằng nhau để chữ "Vòng N" luôn nằm giữa
+  sideRight: { justifyContent: 'flex-end', gap: 16 },
+  hintIcon: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#e0b84c80' },
+  hintIconOn: { backgroundColor: '#e0b84c40' },
+  hintIconText: { fontSize: 18 },
   round: { color: '#9db5a8', fontWeight: '600' },
   name: { color: '#9db5a8', fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', fontSize: 12 },
   row: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' },
@@ -151,9 +184,8 @@ const s = StyleSheet.create({
   hint: { color: '#9db5a8', textAlign: 'center', fontSize: 13 },
   panel: { backgroundColor: '#00000059', borderRadius: 12, borderWidth: 1, borderColor: '#ffffff25', padding: 10, gap: 8, alignItems: 'center', alignSelf: 'stretch' },
   panelTitle: { color: '#e9efe9', fontWeight: '700', textAlign: 'center' },
-  actions: { minHeight: 44, justifyContent: 'center' },
-  hintBtn: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: '#e0b84c80' },
-  hintBtnText: { color: '#e0b84c', fontWeight: '600', fontSize: 13 },
+  actions: { minHeight: 44, justifyContent: 'center', alignSelf: 'stretch' },
+  actRow: { flexDirection: 'row', gap: 8, justifyContent: 'center', alignItems: 'center' },   // KHÔNG flexWrap: wrap làm khung tính sai chiều cao -> nút chồng lên phần dưới
   btn: { backgroundColor: '#e0b84c', paddingVertical: 12, paddingHorizontal: 18, borderRadius: 10 },
   btnText: { color: '#222', fontWeight: '700' },
   danger: { backgroundColor: '#d9534f' },

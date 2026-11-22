@@ -52,10 +52,31 @@ ok('ron + stay + vòng sau', () => {
   assert.strictEqual(g.phase, 'call'); assert.strictEqual(g.turn, 0);
   g.call(0);
   assert.strictEqual(g.result.score, 1); assert.strictEqual(g.bullets[1], 1);
+  assert.strictEqual(g.phase, 'review'); assert.strictEqual(g.turn, 1);   // người thua xem bài Call trước
+  assert.throws(() => g.choose(0, 'stay'));                                // chưa Tiếp tục thì người thắng chưa được chọn
+  assert.throws(() => g.ack(0));                                           // chỉ người thua được Tiếp tục
+  g.ack(1); assert.strictEqual(g.phase, 'choose'); assert.strictEqual(g.turn, 0);
+  const totalBefore = g.deck.length + g.discardPile.length + 9;   // bộ + chồng bỏ + 8 lá trên tay + lá Call
   g.choose(0, 'stay');
   assert.strictEqual(g.bullets[1], 1);               // Stay: đạn giữ nguyên
   assert.strictEqual(g.round, 2); assert.strictEqual(g.turn, 0);
-  assert.deepStrictEqual(g.hands[1].map((c) => c.id).sort(), H('KS QH 4D 9C').map((c) => c.id).sort()); // người thua giữ bài
+  // Sau Call CẢ HAI chia lại: mỗi người 4 lá mới, TOÀN BỘ 54 lá được gom xáo lại => chồng bỏ rỗng, bộ bài còn 54-8 lá
+  assert.strictEqual(g.hands[0].length, 4); assert.strictEqual(g.hands[1].length, 4);
+  assert.strictEqual(g.deckCount, totalBefore - 8); assert.strictEqual(g.discardPile.length, 0);
+  const all = g.deck.concat(g.hands[0], g.hands[1]).map((c) => c.id);
+  H('AS 2S 3H 8D KS QH 4D 9C 3S').forEach((c) => assert.ok(all.includes(c.id)));   // bài cũ + lá Call quay lại bộ bài (đã xáo)   (bảo toàn 54 lá: xem mô phỏng 100 ván bên dưới; test này tự gán tay bài nên có lá trùng)
+});
+ok('pass không ghi log (không lộ việc đối thủ đang có tổ hợp để Call)', () => {
+  const g = new Game();
+  g.hands[0] = H('AS 2S 3H 8D'); g.hands[1] = H('KS QH 4D 9C');
+  g.turn = 1; g.phase = 'draw'; g.deck.push(P('3S'));
+  g.draw(1); g.discard(1, P('3S').id);
+  assert.strictEqual(g.phase, 'call'); assert.strictEqual(g.turn, 0);
+  const before = g.log.length;
+  g.pass(0);
+  assert.strictEqual(g.phase, 'draw'); assert.strictEqual(g.turn, 0);
+  assert.strictEqual(g.log.length, before);
+  assert.ok(!g.log.some((l) => /không Call/i.test(l)));
 });
 ok('hit chết ở 10 viên', () => {
   const g = new Game();
@@ -63,6 +84,7 @@ ok('hit chết ở 10 viên', () => {
   g.turn = 1; g.phase = 'draw'; g.deck.push(P('3S')); g.bullets[1] = 9;
   g.draw(1); g.discard(1, P('3S').id); g.call(0);   // 9 + 1 = 10
   assert.strictEqual(g.bullets[1], 10);
+  g.ack(1);
   g.choose(0, 'hit');
   assert.strictEqual(g.phase, 'over'); assert.strictEqual(g.loser, 1);
 });
@@ -90,6 +112,7 @@ function randomMove(g, rng) {
   if (g.phase === 'draw') g.draw(p);
   else if (g.phase === 'discard') g.discard(p, g.hands[p][Math.floor(rng() * g.hands[p].length)].id);
   else if (g.phase === 'call') (rng() < 0.7 ? g.call(p) : g.pass(p));
+  else if (g.phase === 'review') g.ack(p);
   else if (g.phase === 'choose') g.choose(p, rng() < 0.5 ? 'hit' : 'stay');
 }
 ok('mô phỏng', () => {
@@ -101,7 +124,7 @@ ok('mô phỏng', () => {
       randomMove(g, rng);
       // lá vừa Call nằm trong result.called (pha choose, hoặc over khi có người chết)
       const total = g.deck.length + g.discardPile.length + g.hands[0].length + g.hands[1].length
-        + (g.lastDiscard ? 1 : 0) + ((g.phase === 'choose' || (g.phase === 'over' && g.result)) ? 1 : 0);
+        + (g.lastDiscard ? 1 : 0) + ((g.phase === 'review' || g.phase === 'choose' || (g.phase === 'over' && g.result)) ? 1 : 0);
       assert.strictEqual(total, 54, `seed ${seed}: mất/thừa lá bài`);
     }
     rounds += g.round;

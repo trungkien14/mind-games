@@ -5,13 +5,13 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#0f3d2e",
+    "backgroundColor": "#1b2233",
     "icon": "./assets/icon.png",
     "plugins": [
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#0f3d2e",
+          "backgroundColor": "#1b2233",
           "image": "./assets/splash-icon.png",
           "imageWidth": 220
         }
@@ -22,7 +22,7 @@
       "package": "com.mindgames.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0f3d2e"
+        "backgroundColor": "#1b2233"
       },
       "permissions": [
         "android.permission.RECORD_AUDIO",

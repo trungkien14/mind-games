@@ -1,5 +1,5 @@
 /* 10 Point Poker - máy trạng thái của một ván cho 2 NGƯỜI (không đụng UI, không có AI).
- * Pha (phase): draw -> discard -> (call) -> choose -> [vòng mới | over]
+ * Pha (phase): draw -> discard -> (call) -> review -> choose -> [vòng mới | over]
  * Người chơi: 0 và 1. Log là thông tin CÔNG KHAI nên không bao giờ ghi lá bài rút từ bộ bài. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory(require('./cards.js'));
@@ -97,10 +97,10 @@
       return r.score >= 1 ? r : null;
     }
 
+    // KHÔNG ghi log: pha 'call' chỉ mở khi người đó thật sự có tổ hợp (điểm >= 1), nên dòng "không Call" sẽ lộ bài cho đối thủ (log + banner là công khai).
     pass(p) {
       this._expect(p, 'call');
       this.phase = 'draw';
-      this._log(`${this.names[p]} không Call.`);
     }
 
     call(p) {
@@ -117,9 +117,16 @@
         before, added: r.score, after, wrapped: before + r.score > MAX_BULLETS,
       };
       this.lastDiscard = null;
-      this.phase = 'choose';
-      this.turn = p;
+      this.phase = 'review';
+      this.turn = loser;   // người thua xem bài Call rồi bấm Tiếp tục (ack) thì mới tới lượt người thắng chọn Hit/Stay
       this._log(`${this.names[p]} CALL! ${r.name} = ${r.score} điểm. ${this.names[loser]} nạp +${r.score} đạn (${before} → ${after}${this.result.wrapped ? ', vượt 10 nên chỉ tính hàng đơn vị' : ''}).`);
+    }
+
+    // Người THUA bấm "Tiếp tục" sau khi xem bài Call của người thắng; lúc đó người thắng mới được chọn Hit/Stay.
+    ack(p) {
+      this._expect(p, 'review');
+      this.phase = 'choose';
+      this.turn = this.result.winner;
     }
 
     // Người thắng chọn Hit (bắt người thua bóp cò) hoặc Stay (giữ đạn sang vòng sau).
@@ -161,14 +168,16 @@
       return chamber[Math.floor(this.rng() * MAX_BULLETS)];
     }
 
-    // Người thắng bỏ hết bài cũ, nhận 4 lá mới và đi trước; người thua giữ nguyên 4 lá.
+    // Sau mỗi lần Call (Hit sống sót hoặc Stay) CẢ HAI bỏ hết bài cũ, TOÀN BỘ bài được gom lại xáo mới rồi chia 4+4; người thắng đi trước.
+    // Gom đủ: bộ bài còn lại + chồng bỏ + bài 2 người + lá vừa Call (lastDiscard đã null sau call) => luôn đủ bộ, không lá nào mất hay trùng.
     _nextRound(winner) {
-      this.discardPile.push(...this.hands[winner], this.result.called);
-      this.hands[winner] = this._deal(4);
+      this.deck = C.shuffle(this.deck.concat(this.discardPile, this.hands[0], this.hands[1], this.result.called), this.rng);
+      this.discardPile = [];
+      this.hands = [this._deal(4), this._deal(4)];
       this.round++;
       this.turn = winner;
       this.phase = 'draw';
-      this._log(`Vòng ${this.round}: ${this.names[winner]} nhận 4 lá mới và đi trước.`);
+      this._log(`Vòng ${this.round}: bộ bài được xáo lại, cả hai người nhận 4 lá mới, ${this.names[winner]} đi trước.`);
     }
   }
 

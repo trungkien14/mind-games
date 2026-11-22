@@ -10,7 +10,8 @@
     "test": "node tests/core.test.js",
     "server": "node server/server.js",
     "test:online": "node tests/online.test.js",
-    "assets": "node tools/make-assets.js"
+    "assets": "node tools/make-assets.js",
+    "bot": "node tools/dev-opponent.js"
   },
   "dependencies": {
     "expo": "latest",

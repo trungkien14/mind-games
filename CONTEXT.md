@@ -34,8 +34,8 @@ legacy-web/         bản web+AI cũ
 54 lá (52 + 2 Joker). Mỗi người 4 lá; lượt = rút 1 từ bộ bài, bỏ 1. Đối thủ **Call** nếu 4 lá + lá vừa bỏ thành tổ hợp ≥ 1 điểm (Ron). Tự bốc đủ bài KHÔNG được thắng (Tsumo): pha `discard` không cho `call`.
 Điểm: Pair 1, Two Pair 2, Three 3, Straight 4, Flush 5, Full House 6, Four 7, Straight Flush 8, Royal SF 9, Five of a Kind 10 (chất/độ lớn không quan trọng; A thấp và cao, không nối vòng).
 Người thua nạp đạn = điểm. Ổ 10 ngăn, `P(chết) = đạn/10`. Vượt 10 → chỉ giữ hàng đơn vị (đúng 10 giữ 10; 10+10=20 → 0).
-Người thắng chọn **Hit** (thua bóp cò; sống → đạn về 0; chết → hết ván) hoặc **Stay** (giữ đạn). Vòng sau: người thắng bỏ bài cũ, nhận 4 lá mới; người thua giữ nguyên 4 lá.
-Luồng pha: `draw → discard → (call | draw của đối thủ) → choose → vòng mới | over`.
+Người thắng chọn **Hit** (thua bóp cò; sống → đạn về 0; chết → hết ván) hoặc **Stay** (giữ đạn). Vòng sau (đổi luật theo chủ dự án): CẢ HAI bỏ bài cũ, TOÀN BỘ 54 lá được gom lại xáo mới rồi chia 4+4, người thắng đi trước (chồng bỏ về rỗng; không còn để nhớ được bài đối thủ vừa lộ khi Call, và lá mới không còn là phần đuôi của bộ bài cũ).
+Luồng pha: `draw → discard → (call | draw của đối thủ) → review → choose → vòng mới | over`. `review`: người THUA xem bài Call rồi bấm Tiếp tục (`Game.ack`); chỉ sau đó người thắng mới chọn Hit/Stay, và bài chỉ chia lại sau `choose` (Hit chết thì `over`, không chia).
 
 ## Giả định / luật đã xác nhận
 - Người đi trước vòng 1 do **tung đồng xu** (`Game.first`, `opts.first` để ép khi test); sau mỗi Call, **người thắng đi trước** vòng sau.

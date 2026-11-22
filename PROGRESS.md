@@ -1,30 +1,33 @@
 # PROGRESS — MindGames
 
 ## Đã làm
-- **Nút Gợi ý cho người mới (code xong, test lõi đạt, CHƯA xem trên điện thoại)**: `listOutsForHand(hand4, seenCards)` trong `src/core/cards.js` duyệt các lá chưa thấy, ghép với 4 lá, chấm bằng `evalHand`, gom theo điểm -> {name, score, help (giải thích luật tiếng Việt), count, needs}. `src/ui/HintPanel.js` hiển thị; `Table.js` có nút 💡 (state `showHint`) đặt trên hàng bài của mình. Test: `node tests/hint.test.js`. Khi tay có 5 lá (pha bỏ bài) chỉ nhắc "bỏ 1 lá trước". `needs` là mô tả gần đúng (số/chất), `count` là chính xác trên các lá chưa lộ (chỉ trừ bài trên tay + lá đối thủ vừa bỏ).
-- **Icon/splash + hiệu ứng bắn + âm thanh (code xong, CHƯA có file asset trên đĩa)**:
-  - `tools/make-assets.js` (Node thuần, `npm run assets`) sinh `assets/icon.png`, `adaptive-icon.png`, `splash-icon.png` (logo ổ đạn 10 ngăn, 1024²) và `assets/sounds/{coin,bang,click,card}.wav` (tổng hợp bằng toán). Đã chạy thử trong sandbox Claude: PNG đúng CRC/kích thước, WAV 22050 Hz mono hợp lệ. **Trên máy user chưa chạy** → thư mục `assets/` chưa tồn tại.
-  - `src/ui/ShotEffect.js`: overlay khi Hit (ổ đạn quay chậm dần → chớp sáng → chữ "ĐOÀNG!"/"CẠCH!", rung nếu chết). `Table.js` bật nó đúng 1 lần mỗi cú Hit nhờ khóa `round:victim:bullets` (`g.shot` còn nguyên sang vòng sau nên không dùng trực tiếp); khóa lúc vào bàn được ghi nhớ để không chiếu lại hiệu ứng cũ.
-  - `src/sound.js`: `play(name)` dùng `expo-audio`, bọc try/catch, `setMuted`. Gọi ở CoinFlip (coin), Table (card khi rút/bỏ), ShotEffect (bang/click).
-  - `app.json`: `icon`, `adaptiveIcon`, plugin `expo-splash-screen`; `package.json`: thêm `expo-audio`, `expo-splash-screen`, script `assets`.
-  - Chưa nhìn trên điện thoại.
-- **Thiết kế lại màn sảnh online** (`Online()` trong `src/ui/Online.js`, style `l`): header (← / ⚙ mở địa chỉ server), logo + tên game, ô tên, 2 thẻ "Tạo phòng mới" / "Vào phòng có sẵn" (nút vào phòng chỉ bật khi đủ 4 ký tự), khung lỗi đỏ, ScrollView + KeyboardAvoidingView. Màn chờ phòng (`Room`) chưa đổi. Chưa nhìn trên máy thật. Lưu ý: nút bánh răng tròn trong ảnh chụp cũ là menu dev của Expo Go, không phải của app.
-- **Màn hình chính dạng lưới game + bỏ chế độ chung 1 máy**: `src/games.js`, `src/ui/Home.js` (lưới 2 cột), `App.js` (chỉ điều hướng). Chưa nhìn trên điện thoại (cần xem: 2 cột, nhãn ONLINE không bị cắt, status bar đổi màu). Ảnh minh họa thẻ đang là emoji.
+- **Bỏ dòng log "X không Call" (lộ bài) (code xong, `npm test` 30 nhóm + test online đạt, CHƯA thử điện thoại)**: pha `call` chỉ mở khi người đó có tổ hợp điểm >= 1, nên log công khai (hiện ở banner `Table.js` = dòng log cuối) nói "không Call" là lộ đang có bài. `Game.pass` trong `src/core/game.js` giờ KHÔNG ghi log. Thêm test `pass không ghi log`. Đã kiểm Table.js: chữ "Đang chờ X…" giống nhau ở pha `call` và `draw` nên không lộ. Tự rút dùng khóa `round:log.length` vẫn duy nhất (mỗi lượt rút đứng sau 1 dòng log khác). Còn lộ ngầm không sửa được: thời gian người kia ngần ngừ trước khi rút (có tay Call thì phải quyết định, không thì rút ngay).
+- **Sau Call (Stay hoặc Hit sống) xáo lại TOÀN BỘ bài rồi chia 4+4 (code xong, `npm test` 29 nhóm + test online đạt, CHƯA thử điện thoại)**: trước đây `Game._nextRound` chỉ đẩy bài cũ vào chồng bỏ, bộ chính KHÔNG xáo nên 8 lá mới là đôi đuôi bộ cũ. Giờ `deck = shuffle(deck + discardPile + hands[0] + hands[1] + result.called)`, `discardPile = []`, rồi chia. Hit chết vẫn `over`, không chia. Sửa test `ron + stay + vòng sau` (chồng bỏ rỗng, deckCount = tổng - 8, bài cũ quay lại bộ); mô phỏng 100 ván vẫn bảo toàn 54 lá. Lưu ý: nhờ vậy bộ bài luôn còn 46 lá đầu mỗi vòng (cạn bài gần như không xảy ra, nhánh `_take` xáo chồng bỏ chủ yếu là dự phòng). Gợi ý `HintPanel` có thể đơn giản hóa vì chồng bỏ rỗng sau mỗi Call (chưa kiểm tra/sửa).
+- **Báo đối thủ thoát phòng / mất kết nối (code xong, test online đạt, Online.js mới chỉ kiểm đếm ngoặc vì sandbox không có parser JSX, CHƯA thử điện thoại)**
+- **Hết ván: cả 2 người bấm "Tiếp tục" mới sang ván mới (code xong, test online đạt, CHƯA thử điện thoại)**
+- **Pha `review`: sau Call người thua có thời gian xem bài rồi bấm "Tiếp tục" (code xong, `npm test` + test online đạt, CHƯA thử trên điện thoại)**
+- **Đổi luật: sau Call CẢ HAI chia lại 4 lá (code xong, `npm test` đạt 29 nhóm, CHƯA thử trên điện thoại)**
+- **Làm lại hiệu ứng bắn `src/ui/ShotEffect.js` (code xong, cú pháp JSX + toán góc dừng đạt, CHƯA xem trên điện thoại)**
+- **Chỉnh UI sau khi thử 2 máy thật (code xong, cú pháp JSX đạt, CHƯA xem lại trên điện thoại)**
+- **Bot đối thủ để test online 1 mình (code xong, test 2 bot đấu nhau đạt, CHƯA thử với điện thoại thật)**
+- **Đổi màu nền game sang xám than ngả navy `#1b2233` (code xong, CHƯA xem trên điện thoại)**
+- **Tự rút bài + bỏ gợi ý trên nút Call (code xong, CHƯA thử trên điện thoại)**
+- **Sửa lỗi lệch đồng bộ 2 máy + loading khi tạo/chờ phòng (code xong, CHƯA thử 2 điện thoại)**
+- **Nút Gợi ý cho người mới (code xong, test lõi đạt, CHƯA xem trên điện thoại)**
+- **Thiết kế lại màn sảnh online**
 - **Thêm game mới**: thêm 1 phần tử vào `GAMES` trong `src/games.js` (xem CONTEXT.md).
-- **Hiệu ứng đồng xu** (`src/ui/CoinFlip.js`): `Animated` có sẵn, lật `rotateX` 6 vòng, dừng đúng mặt theo `g.turn`. Chưa chạy trên điện thoại; cần nhìn: Ngửa/Sấp dừng đúng, mặt sau có bị ngược chữ (`backfaceVisibility` Android), sau Rematch có hiện lại.
-- **Tung đồng xu quyết định ai đi trước vòng 1** (`src/core/game.js`: `this.first`). Test lõi 29 nhóm đạt. `tests/online.test.js` đã sửa nhưng chưa chạy lại trên máy user.
-- Lõi (`src/core`) đạt `node tests/core.test.js`. Online nhiều máy bằng mã phòng: `Game.viewFor(p)`, `server/server.js`, `src/net/client.js`, `src/ui/Online.js`; `npm run test:online` đạt trên môi trường Claude.
+- **Hiệu ứng đồng xu**
+- **Tung đồng xu quyết định ai đi trước vòng 1**
 
 ## CHƯA kiểm chứng (quan trọng)
 - UI online + hiệu ứng bắn/âm thanh chưa chạy trên điện thoại thật. Nếu quên `npm run assets`, Metro báo lỗi "Unable to resolve ../assets/sounds/coin.wav" (require tĩnh) → app không build.
 
 
 ## Việc đầu tiên của phiên sau
-1. Thử online: KHÔNG cần chạy `npm run server` trên PC vì app đã trỏ tới server Render (`SERVER_URL`). 2 điện thoại quét QR, "Chơi online": một người tạo phòng, người kia nhập mã.
-2. Chơi 1 ván 2 máy: đồng xu (+tiếng), rút/bỏ bài (+tiếng), Call/Pass, Hit (hiệu ứng ổ đạn + tiếng bang/click, chỉ chiếu 1 lần, cả 2 máy đều thấy), Stay, Rematch. Icon/splash chỉ thấy đúng ở bản build (Expo Go dùng icon của nó).
+- Luật chơi nằm ở `src/core/game.js` chạy trên SERVER: sửa xong phải deploy lại Render (hoặc tắt/chạy lại `npm run server`) thì 2 máy mới thấy đổi. Dấu hiệu server đã lên bản mới: log đầu vòng 2 có chữ "bộ bài được xáo lại". (User từng báo "bài vẫn không đổi sau Call" trong khi code đúng, nghi server chưa deploy.)
+
 
 ## Còn dở / bước tiếp theo
-- Gợi ý pha bỏ bài (5 lá): với mỗi lá có thể bỏ, hiện tiềm năng tối đa của 4 lá còn lại (gọi `listOutsForHand` 5 lần) để chỉ "nên bỏ lá nào".
-- Gợi ý chưa trừ các lá đã bỏ từ trước (client không có `discardPile`); có thể chỉnh xác hơn nếu server gửi thêm.
+- Dựng lại giao diện bàn chơi na ná game bài VN (bàn bầu dục, avatar người chơi, bài xòe quạt, bộ bài giữa bàn): CHƯA LÀM, việc lớn, cần tách thành nhiều bước (theme màu -> bố cục bàn -> avatar -> xòe bài). Chung với việc đổi màu nền (màu nền đã xong, xem mục Đã làm). Chưa xem được video YouTube user gửi, chỉ có ảnh chụp.
 - Nút tắt/bật âm (đã có `setMuted` trong `src/sound.js`, chưa có UI).
 - Online còn thiếu: lưu phiên để vào lại phòng, báo khi đối thủ thoát, lưu địa chỉ server (AsyncStorage).

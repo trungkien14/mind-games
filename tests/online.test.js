@@ -48,6 +48,7 @@ const { createServer } = require('../server/server.js');
     if (v.phase === 'draw') act = { type: 'draw' };
     else if (v.phase === 'discard') act = { type: 'discard', cardId: v.hands[seat][0].id };
     else if (v.phase === 'call') act = v.callPreview ? { type: 'call' } : { type: 'pass' };
+    else if (v.phase === 'review') act = { type: 'ack' };   // người thua xem bài Call rồi bấm Tiếp tục
     else act = { type: 'choose', choice: steps % 2 ? 'hit' : 'stay' };
     const r = await post('/action', { room: a.room, token: tk, ...act });
     assert.strictEqual(r.code, 200, JSON.stringify(r));
@@ -56,10 +57,24 @@ const { createServer } = require('../server/server.js');
   assert.strictEqual(end.phase, 'over');
   assert.strictEqual((await post('/action', { room: a.room, token: a.token, type: 'forfeit' })).code, 400);
 
-  // Ván mới
-  const rm = await post('/action', { room: a.room, token: b.token, type: 'rematch' });
+  // Ván mới: cần CẢ HAI ghế bấm. Một người bấm (kể cả bấm lặp) thì vẫn ở màn kết thúc, cờ rematch[ghế] bật
+  const rm1 = await post('/action', { room: a.room, token: b.token, type: 'rematch' });
+  assert.strictEqual(rm1.code, 200); assert.strictEqual(rm1.view.phase, 'over'); assert.deepStrictEqual(rm1.view.rematch, [false, true]);
+  const rm1b = await post('/action', { room: a.room, token: b.token, type: 'rematch' });
+  assert.strictEqual(rm1b.view.phase, 'over');
+  const rm = await post('/action', { room: a.room, token: a.token, type: 'rematch' });
   assert.strictEqual(rm.code, 200); assert.strictEqual(rm.view.phase, 'draw'); assert.strictEqual(rm.view.round, 1);
+  assert.deepStrictEqual(rm.view.rematch, [false, false]);
 
-  console.log(`OK online: ván hoàn tất sau ${steps} hành động, lọc bài đúng, rematch OK`);
+  // Thoát phòng: trước đó oppGone=false; B gửi leave thì A thấy oppGone=true, kể cả khi since==version (phản hồi `same`)
+  const before = await get({ room: a.room, token: a.token, since: 0 });
+  assert.strictEqual(before.oppGone, false);
+  assert.strictEqual((await post('/action', { room: a.room, token: b.token, type: 'leave' })).code, 200);
+  const after = await get({ room: a.room, token: a.token, since: 0 });
+  assert.strictEqual(after.oppGone, true);
+  const afterSame = await get({ room: a.room, token: a.token, since: after.version });
+  assert.strictEqual(afterSame.same, true); assert.strictEqual(afterSame.oppGone, true);
+
+  console.log(`OK online: ván hoàn tất sau ${steps} hành động, lọc bài đúng, rematch OK, báo thoát phòng OK`);
   srv.close();
 })().catch((e) => { console.error('FAIL', e); process.exit(1); });
